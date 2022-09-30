@@ -13,3 +13,16 @@ def change_filter_property(user, prop_name, lower_limit_new_val, upper_limit_new
     filters = load_filters(user)
     filters[prop_name] = [lower_limit_new_val, upper_limit_new_val]
     save_filters(user, filters)
+
+def clear_filters(user):
+    filters = {
+            "num_subscribers": [0, "no_upper_limit"], 
+            "num_videos": [0, "no_upper_limit"], 
+            "total_views": [0, "no_upper_limit"], 
+            "avg_views_by_video": [0, "no_upper_limit"]
+        }
+
+    save_filters(user, filters)
+
+def create_user_filters(user):
+    clear_filters(user)

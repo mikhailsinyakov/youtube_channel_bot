@@ -1,6 +1,6 @@
 import unittest
 
-from change_filter import load_filters, save_filters, change_filter_property 
+from change_filter import load_filters, change_filter_property, clear_filters
 
 class TestChangeFilter(unittest.TestCase):
     
@@ -45,14 +45,7 @@ class TestChangeFilter(unittest.TestCase):
         self.assertEqual(filters["avg_views_by_video"][1], avg_views_by_video_upper_limit)
     
     def tearDown(self):
-        filters = {
-            "num_subscribers": [0, "no_upper_limit"], 
-            "num_videos": [0, "no_upper_limit"], 
-            "total_views": [0, "no_upper_limit"], 
-            "avg_views_by_video": [0, "no_upper_limit"]
-        }
-
-        save_filters("test", filters)
+        clear_filters("test")
 
 
 if __name__ == '__main__':
