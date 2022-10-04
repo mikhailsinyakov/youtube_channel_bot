@@ -1,12 +1,14 @@
 import re
 import logging
 
+import prettytable as pt
 from dotenv import dotenv_values
 from telegram import Update, constants, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, CallbackQueryHandler, MessageHandler
 
 from change_filter import create_user_filters, load_filters, change_filter_property
-from helpers import stringify_filters, make_readable
+from youtube_api import get_channels
+from helpers import stringify_filters, make_readable, prettify_number, trim_string
 
 config = dotenv_values(".env")
 
@@ -34,14 +36,15 @@ async def edit_filters(update, context):
     menu = InlineKeyboardMarkup(buttons)
     await context.bot.send_message(chat_id=update.effective_chat.id, text="Choose filter to edit:", reply_markup=menu)
 
+async def search(update, context):
+    context.user_data["context_mode"] = "search"
+    await context.bot.send_message(chat_id=update.effective_chat.id, text="Enter a search query:")
+
 async def handle_callback_query(update, context):
     query = update.callback_query
     await query.answer()
     if query.data.startswith("edit_filter"):
-        filters = load_filters(query.from_user.id)
         filter_key = query.data.split(" ")[1]
-        filter_to_edit = filters[filter_key]
-
         await query.edit_message_text(text=f'Editing "{make_readable(filter_key)}"')
 
         context.user_data["context_mode"] = "edit_filter"
@@ -71,6 +74,18 @@ async def handle_messages(update, context):
                     await context.bot.send_message(chat_id=update.effective_chat.id, text="Changes were saved")
         else:
             await context.bot.send_message(chat_id=update.effective_chat.id, text="You need to enter a non-negative integer")
+    elif context.user_data["context_mode"] == "search":
+        msg = await context.bot.send_message(chat_id=update.effective_chat.id, text="Wait a second...", parse_mode=constants.ParseMode.HTML)
+
+        query = update.message["text"]
+        channels = get_channels(query, 5, ["title", "subscribers_count", "total_views"])
+        table = pt.PrettyTable(["title", "#subs", "#views"])
+        for channel in channels:
+            table.add_row([prettify_number(v) if isinstance(v, int) else trim_string(v, 15) for v in channel.values()])
+        
+        context.user_data["context_mode"] == "general"
+        await context.bot.edit_message_text(chat_id=update.effective_chat.id, message_id=msg.id, text=f"<pre>{table}</pre>", parse_mode=constants.ParseMode.HTML)
+
 
 if __name__ == "__main__":
     application = ApplicationBuilder().token(config["BOT_API_TOKEN"]).build()
@@ -83,6 +98,9 @@ if __name__ == "__main__":
 
     edit_filters_handler = CommandHandler("edit_filters", edit_filters)
     application.add_handler(edit_filters_handler)
+
+    search_handler = CommandHandler("search", search)
+    application.add_handler(search_handler)
 
     edit_filter_handler = CallbackQueryHandler(handle_callback_query)
     application.add_handler(edit_filter_handler)

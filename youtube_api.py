@@ -50,11 +50,20 @@ def get_channel_info(channel_id):
         "subscribers_count": int(stats["subscriberCount"]),
         "videos_count": int(stats["videoCount"]),
         "total_views": int(stats["viewCount"]),
-        "average_views_by_video": int(stats["viewCount"]) / int(stats["videoCount"])
+        "average_views_by_video": int(int(stats["viewCount"]) / int(stats["videoCount"])),
+        "channel_id": channel_id
     }
 
-def get_channels(query, n_results):
-    return [get_channel_info(ch_id) for ch_id in get_channel_ids(query, n_results)]
-
-if __name__ == "__main__":
-    print(get_channels("zenit", 5))
+def get_channels(query, n_results, keys=None):
+    channels = [get_channel_info(ch_id) for ch_id in get_channel_ids(query, n_results)]
+    if keys is None:
+        return channels
+    
+    filtered_channels = []
+    for channel in channels:
+        filtered_channel = {}
+        for key in keys:
+            if key in channel:
+                filtered_channel[key] = channel[key]
+        filtered_channels.append(filtered_channel)
+    return filtered_channels
