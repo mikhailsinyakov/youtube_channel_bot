@@ -2,36 +2,32 @@ from dotenv import dotenv_values
 import requests
 from urllib.parse import urlencode
 
+from change_filter import load_filters
+
 config = dotenv_values(".env")
 
-def get_channel_ids(query, n_results):
+def get_channel_ids(query, page_token=None):
     search_url = "https://www.googleapis.com/youtube/v3/search?"
 
-    def get_ids(n_res, page_token=None):
-        if n_res <= 0:
-            return []
-        max_results = 50 if n_res > 50 else 5 if n_res < 5 else n_res
-        query_params = {
-            "key": config["GOOGLE_API_KEY"],
-            "part": "snippet",
-            "q": query,
-            "type": "channel",
-            "maxResults": max_results
-        }
-        if page_token is not None:
-            query_params["pageToken"] = page_token
-        r = requests.get(search_url + urlencode(query_params))
-        if r.status_code != 200:
-            return []
-        results = r.json()
-        next_page_token = results["nextPageToken"]
-        items = [channel["id"]["channelId"] for channel in results["items"]]
+    query_params = {
+        "key": config["GOOGLE_API_KEY"],
+        "part": "snippet",
+        "q": query,
+        "type": "channel",
+        "maxResults": 50
+    }
+    if page_token is not None:
+        query_params["pageToken"] = page_token
+    r = requests.get(search_url + urlencode(query_params))
+    if r.status_code != 200:
+        return []
+    results = r.json()
+    next_page_token = results["nextPageToken"]
+    items = [channel["id"]["channelId"] for channel in results["items"]]
 
-        return items[:n_res] + get_ids(n_res-max_results, next_page_token)
-    
-    return get_ids(n_results)
+    return (items, next_page_token)
 
-def get_channel_info(channel_id):
+def get_channel_info(channel_id, filters):
     channel_url = "https://www.googleapis.com/youtube/v3/channels?"
     query_params = {
         "key": config["GOOGLE_API_KEY"],
@@ -44,18 +40,47 @@ def get_channel_info(channel_id):
         return {}
     channel_info = r.json()["items"][0]
     stats = channel_info["statistics"]
-    
-    return {
+
+    info = {
         "title": channel_info["snippet"]["title"],
         "subscribers_count": int(stats["subscriberCount"]),
         "videos_count": int(stats["videoCount"]),
         "total_views": int(stats["viewCount"]),
-        "average_views_by_video": int(int(stats["viewCount"]) / int(stats["videoCount"])),
+        "average_views_by_video": int(int(stats["viewCount"]) / int(stats["videoCount"])) if int(stats["videoCount"]) != 0 else 0,
         "channel_id": channel_id
     }
 
-def get_channels(query, n_results, keys=None):
-    channels = [get_channel_info(ch_id) for ch_id in get_channel_ids(query, n_results)]
+    for filter_key in filters.keys():
+        value = info[filter_key]
+        lower_limit = filters[filter_key][0]
+        upper_limit = filters[filter_key][1]
+        if not isinstance(upper_limit, int):
+            upper_limit = float("inf")
+        if value < lower_limit or value > upper_limit:
+            return None
+
+    return info
+
+def get_filtered_channels(query, n_channels, filters):
+    channels = []
+    page_token = None
+    while n_channels:
+        channel_ids, next_page_token = get_channel_ids(query, page_token)
+        for channel_id in channel_ids:
+            channel_info = get_channel_info(channel_id, filters)
+            if channel_info is not None:
+                channels.append(channel_info)
+                n_channels -= 1
+                if not n_channels:
+                    break
+            
+        page_token = next_page_token
+    
+    return channels
+
+def get_channels(query, n_channels, user, keys=None):
+    filters = load_filters(user)
+    channels = get_filtered_channels(query, n_channels, filters)
     if keys is None:
         return channels
     

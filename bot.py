@@ -78,7 +78,7 @@ async def handle_messages(update, context):
         msg = await context.bot.send_message(chat_id=update.effective_chat.id, text="Wait a second...", parse_mode=constants.ParseMode.HTML)
 
         query = update.message["text"]
-        channels = get_channels(query, 5, ["title", "subscribers_count", "total_views"])
+        channels = get_channels(query, 5, update.effective_user.id, keys=["title", "subscribers_count", "total_views"])
         table = pt.PrettyTable(["title", "#subs", "#views"])
         for channel in channels:
             table.add_row([prettify_number(v) if isinstance(v, int) else trim_string(v, 15) for v in channel.values()])

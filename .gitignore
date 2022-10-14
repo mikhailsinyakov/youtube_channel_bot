@@ -1,3 +1,5 @@
 .env
 bot.log
 **/__pycache__
+user_filters/
+!user_filters/test_filter.json
