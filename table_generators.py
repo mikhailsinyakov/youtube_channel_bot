@@ -88,7 +88,6 @@ def get_table_image(data):
 
 def get_pretty_table(data):
     data = change_channel_keys(data)
-    print(data)
     table = pt.PrettyTable(data[0].keys())
     for channel in data:
         table.add_row([prettify_number(v) if isinstance(v, int) else trim_string(v, 15) for v in channel.values()])

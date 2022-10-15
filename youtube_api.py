@@ -84,11 +84,12 @@ def get_channels(query, n_channels, user, keys=None):
     if keys is None:
         return channels
     
-    filtered_channels = []
-    for channel in channels:
-        filtered_channel = {}
+    channels_with_keys = []
+    for i, channel in enumerate(channels):
+        new_channel = {}
+        new_channel["#"] = i + 1
         for key in keys:
             if key in channel:
-                filtered_channel[key] = channel[key]
-        filtered_channels.append(filtered_channel)
-    return filtered_channels
+                new_channel[key] = channel[key]
+        channels_with_keys.append(new_channel)
+    return channels_with_keys
