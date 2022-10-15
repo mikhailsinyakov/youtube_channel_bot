@@ -1,4 +1,3 @@
-import math
 import re
 
 def make_readable(key):

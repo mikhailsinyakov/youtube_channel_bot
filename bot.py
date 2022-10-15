@@ -1,7 +1,6 @@
 import re
 import logging
 
-import prettytable as pt
 from dotenv import dotenv_values
 from telegram import Update, constants, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, CallbackQueryHandler, MessageHandler
@@ -9,6 +8,7 @@ from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, Callb
 from change_filter import create_user_filters, load_filters, change_filter_property
 from youtube_api import get_channels
 from helpers import stringify_filters, make_readable, prettify_number, trim_string
+from table_generators import get_table_image, get_pretty_table
 
 config = dotenv_values(".env")
 
@@ -79,12 +79,15 @@ async def handle_messages(update, context):
 
         query = update.message["text"]
         channels = get_channels(query, 5, update.effective_user.id, keys=["title", "subscribers_count", "total_views"])
-        table = pt.PrettyTable(["title", "#subs", "#views"])
-        for channel in channels:
-            table.add_row([prettify_number(v) if isinstance(v, int) else trim_string(v, 15) for v in channel.values()])
-        
+        image = get_table_image(channels)
+
         context.user_data["context_mode"] == "general"
-        await context.bot.edit_message_text(chat_id=update.effective_chat.id, message_id=msg.id, text=f"<pre>{table}</pre>", parse_mode=constants.ParseMode.HTML)
+        if image:
+            await context.bot.delete_message(chat_id=update.effective_chat.id, message_id=msg.id)
+            await context.bot.send_photo(chat_id=update.effective_chat.id, photo=image)
+        else:
+            table = get_pretty_table(channels)
+            await context.bot.edit_message_text(chat_id=update.effective_chat.id, message_id=msg.id, text=table, parse_mode=constants.ParseMode.HTML)
 
 
 if __name__ == "__main__":
