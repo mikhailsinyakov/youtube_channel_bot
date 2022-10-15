@@ -46,9 +46,10 @@ def get_channel_info(channel_id, filters):
         "subscribers_count": int(stats["subscriberCount"]),
         "videos_count": int(stats["videoCount"]),
         "total_views": int(stats["viewCount"]),
-        "average_views_by_video": int(int(stats["viewCount"]) / int(stats["videoCount"])) if int(stats["videoCount"]) != 0 else 0,
-        "channel_id": channel_id
+        "average_views_by_video": int(int(stats["viewCount"]) / int(stats["videoCount"])) if int(stats["videoCount"]) != 0 else 0
     }
+    custom_url = channel_info["snippet"].get("customUrl")
+    info["channel_url"] = f"https://www.youtube.com/{f'c/{custom_url}' if custom_url else f'channel/{channel_id}'}"
 
     for filter_key in filters.keys():
         value = info[filter_key]

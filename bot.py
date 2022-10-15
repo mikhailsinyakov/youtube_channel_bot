@@ -53,6 +53,12 @@ async def handle_callback_query(update, context):
         context.user_data["upper_limit"] = None
 
         await context.bot.send_message(chat_id=query.message.chat.id, text="Enter lower limit:")
+    elif query.data == "get_channel_url":
+        await query.edit_message_text(text="Enter channel #")
+    elif query.data == "back":
+        context.user_data.clear()
+        context.user_data["context_mode"] = "general"
+        await context.bot.send_message(chat_id=query.message.chat.id, text="You are in the main menu")
 
 async def handle_messages(update, context):
     if context.user_data["context_mode"] == "edit_filter":
@@ -78,16 +84,39 @@ async def handle_messages(update, context):
         msg = await context.bot.send_message(chat_id=update.effective_chat.id, text="Wait a second...", parse_mode=constants.ParseMode.HTML)
 
         query = update.message["text"]
-        channels = get_channels(query, 5, update.effective_user.id, keys=["title", "subscribers_count", "total_views"])
+        channels = get_channels(query, 5, update.effective_user.id, keys=["title", "subscribers_count", "total_views", "channel_url"])
         image = get_table_image(channels)
 
-        context.user_data["context_mode"] == "general"
-        if image:
+        context.user_data["context_mode"] = "search_results"
+        context.user_data["last_query_results"] = channels
+        if False:
             await context.bot.delete_message(chat_id=update.effective_chat.id, message_id=msg.id)
             await context.bot.send_photo(chat_id=update.effective_chat.id, photo=image)
         else:
             table = get_pretty_table(channels)
             await context.bot.edit_message_text(chat_id=update.effective_chat.id, message_id=msg.id, text=table, parse_mode=constants.ParseMode.HTML)
+        
+        buttons = [
+            [InlineKeyboardButton("Get channel's url", callback_data="get_channel_url")],
+            [InlineKeyboardButton("Back", callback_data="back")]
+        ]
+        menu = InlineKeyboardMarkup(buttons)
+        await context.bot.send_message(chat_id=update.effective_chat.id, text="Actions:", reply_markup=menu)
+    elif context.user_data["context_mode"] == "search_results":
+        i = int(update.message["text"]) - 1
+        if i < 0 or i >= len(context.user_data["last_query_results"]):
+            await context.bot.send_message(chat_id=update.effective_chat.id, text="Number you specified is not correct")
+        else:
+            channel_url = context.user_data["last_query_results"][i]["channel_url"]
+            await context.bot.send_message(chat_id=update.effective_chat.id, text=channel_url)
+            buttons = [
+                [InlineKeyboardButton("Get channel's url", callback_data="get_channel_url")],
+                [InlineKeyboardButton("Back", callback_data="back")]
+            ]
+            menu = InlineKeyboardMarkup(buttons)
+            await context.bot.send_message(chat_id=update.effective_chat.id, text="Actions:", reply_markup=menu)
+
+
 
 
 if __name__ == "__main__":

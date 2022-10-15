@@ -25,7 +25,7 @@ def change_channel_keys(data):
         for key in channel_info.keys():
             if key in changes.keys():
                 new_dict[changes[key]] = channel_info[key]
-            else:
+            elif key != "channel_url":
                 new_dict[key] = channel_info[key]
         new_data.append(new_dict)
     
