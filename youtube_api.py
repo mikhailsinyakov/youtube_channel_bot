@@ -20,7 +20,7 @@ def get_channel_ids(query, page_token=None):
         query_params["pageToken"] = page_token
     r = requests.get(search_url + urlencode(query_params))
     if r.status_code != 200:
-        return []
+        return ([], None)
     results = r.json()
     next_page_token = results["nextPageToken"]
     items = [channel["id"]["channelId"] for channel in results["items"]]
@@ -37,7 +37,7 @@ def get_channel_info(channel_id, filters):
     
     r = requests.get(channel_url + urlencode(query_params))
     if r.status_code != 200:
-        return {}
+        return None
     channel_info = r.json()["items"][0]
     stats = channel_info["statistics"]
 
@@ -65,14 +65,17 @@ def get_channel_info(channel_id, filters):
 def get_filtered_channels(query, n_channels, filters):
     channels = []
     page_token = None
-    while n_channels:
+    keep_up = True
+    while keep_up:
         channel_ids, next_page_token = get_channel_ids(query, page_token)
+        keep_up = False
         for channel_id in channel_ids:
             channel_info = get_channel_info(channel_id, filters)
             if channel_info is not None:
                 channels.append(channel_info)
                 n_channels -= 1
-                if not n_channels:
+                keep_up = n_channels > 0
+                if not keep_up:
                     break
             
         page_token = next_page_token

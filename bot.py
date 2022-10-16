@@ -85,6 +85,9 @@ async def handle_messages(update, context):
 
         query = update.message["text"]
         channels = get_channels(query, 5, update.effective_user.id, keys=["title", "subscribers_count", "total_views", "channel_url"])
+        if not channels:
+            await context.bot.edit_message_text(chat_id=update.effective_chat.id, message_id=msg.id, text="No channels were found")
+            return
         image = get_table_image(channels)
 
         context.user_data["context_mode"] = "search_results"
