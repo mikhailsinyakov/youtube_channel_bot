@@ -2,7 +2,7 @@ import re
 import logging
 
 from dotenv import dotenv_values
-from telegram import Update, constants, InlineKeyboardMarkup, InlineKeyboardButton
+from telegram import Update, constants, InlineKeyboardMarkup, InlineKeyboardButton, BotCommand
 from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, CallbackQueryHandler, MessageHandler
 
 from change_filter import create_user_filters, load_filters, change_filter_property
@@ -21,6 +21,11 @@ logging.basicConfig(
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     create_user_filters(update.effective_user.id)
     context.user_data["context_mode"] = "general"
+    await context.bot.set_my_commands([
+        BotCommand("show_filters", "Show current filters"),
+        BotCommand("edit_filters", "Edit filters"),
+        BotCommand("search", "Search channels")
+    ])
     await context.bot.send_message(chat_id=update.effective_chat.id, text="Welcome to Youtube channel bot!")
 
 async def show_filters(update, context):
@@ -92,7 +97,7 @@ async def handle_messages(update, context):
 
         context.user_data["context_mode"] = "search_results"
         context.user_data["last_query_results"] = channels
-        if False:
+        if image:
             await context.bot.delete_message(chat_id=update.effective_chat.id, message_id=msg.id)
             await context.bot.send_photo(chat_id=update.effective_chat.id, photo=image)
         else:
