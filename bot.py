@@ -1,5 +1,6 @@
 import re
 import logging
+from tkinter import image_names
 
 from dotenv import dotenv_values
 from telegram import Update, constants, InlineKeyboardMarkup, InlineKeyboardButton, BotCommand
@@ -17,6 +18,36 @@ logging.basicConfig(
     level=logging.INFO,
     filename="bot.log"
 )
+
+async def display_channels(update, context, channels, message_to_edit=None):
+    if not channels:
+        await context.bot.edit_message_text(chat_id=update.effective_chat.id, message_id=message_to_edit.id, text="No channels were found")
+        return
+    image = get_table_image(channels)
+    if image:
+        if message_to_edit is not None:
+            await context.bot.delete_message(chat_id=update.effective_chat.id, message_id=message_to_edit.id)
+        await context.bot.send_photo(chat_id=update.effective_chat.id, photo=image)
+    else:
+        table = get_pretty_table(channels)
+        if message_to_edit is not None:
+            await context.bot.edit_message_text(chat_id=update.effective_chat.id, message_id=message_to_edit.id, text=table, parse_mode=constants.ParseMode.HTML)
+        else:
+            await context.bot.send_message(chat_id=update.effective_chat.id, text=table, parse_mode=constants.ParseMode.HTML)
+
+async def add_search_options_buttons(context, update):
+    channels = context.user_data["last_query_results"]
+    results_page = context.user_data["results_page"]
+
+    buttons = []
+    if len(channels) > results_page * 5:
+        buttons.append([InlineKeyboardButton("Next page", callback_data="next_page")])
+
+    buttons.append([InlineKeyboardButton("Get channel's url", callback_data="get_channel_url")])
+    buttons.append([InlineKeyboardButton("Back", callback_data="back")])
+    
+    menu = InlineKeyboardMarkup(buttons)
+    await context.bot.send_message(chat_id=update.effective_chat.id, text="Actions:", reply_markup=menu)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     create_user_filters(update.effective_user.id)
@@ -58,6 +89,13 @@ async def handle_callback_query(update, context):
         context.user_data["upper_limit"] = None
 
         await context.bot.send_message(chat_id=query.message.chat.id, text="Enter lower limit:")
+    elif query.data == "next_page":
+        channels = context.user_data["last_query_results"]
+        results_page = context.user_data["results_page"] + 1
+        context.user_data["results_page"] = results_page
+
+        await display_channels(update, context, channels[(results_page-1)*5:results_page*5])
+        await add_search_options_buttons(context, update)
     elif query.data == "get_channel_url":
         await query.edit_message_text(text="Enter channel #")
     elif query.data == "back":
@@ -89,27 +127,15 @@ async def handle_messages(update, context):
         msg = await context.bot.send_message(chat_id=update.effective_chat.id, text="Wait a second...", parse_mode=constants.ParseMode.HTML)
 
         query = update.message["text"]
-        channels = get_channels(query, 5, update.effective_user.id, keys=["title", "subscribers_count", "total_views", "channel_url"])
-        if not channels:
-            await context.bot.edit_message_text(chat_id=update.effective_chat.id, message_id=msg.id, text="No channels were found")
-            return
-        image = get_table_image(channels)
-
-        context.user_data["context_mode"] = "search_results"
-        context.user_data["last_query_results"] = channels
-        if image:
-            await context.bot.delete_message(chat_id=update.effective_chat.id, message_id=msg.id)
-            await context.bot.send_photo(chat_id=update.effective_chat.id, photo=image)
-        else:
-            table = get_pretty_table(channels)
-            await context.bot.edit_message_text(chat_id=update.effective_chat.id, message_id=msg.id, text=table, parse_mode=constants.ParseMode.HTML)
+        channels = get_channels(query, 50, update.effective_user.id, keys=["title", "subscribers_count", "total_views", "channel_url"])
         
-        buttons = [
-            [InlineKeyboardButton("Get channel's url", callback_data="get_channel_url")],
-            [InlineKeyboardButton("Back", callback_data="back")]
-        ]
-        menu = InlineKeyboardMarkup(buttons)
-        await context.bot.send_message(chat_id=update.effective_chat.id, text="Actions:", reply_markup=menu)
+        await display_channels(update, context, channels[:5], msg)
+        
+        if channels:
+            context.user_data["context_mode"] = "search_results"
+            context.user_data["last_query_results"] = channels
+            context.user_data["results_page"] = 1
+            await add_search_options_buttons(context, update)
     elif context.user_data["context_mode"] == "search_results":
         i = int(update.message["text"]) - 1
         if i < 0 or i >= len(context.user_data["last_query_results"]):
@@ -117,12 +143,7 @@ async def handle_messages(update, context):
         else:
             channel_url = context.user_data["last_query_results"][i]["channel_url"]
             await context.bot.send_message(chat_id=update.effective_chat.id, text=channel_url)
-            buttons = [
-                [InlineKeyboardButton("Get channel's url", callback_data="get_channel_url")],
-                [InlineKeyboardButton("Back", callback_data="back")]
-            ]
-            menu = InlineKeyboardMarkup(buttons)
-            await context.bot.send_message(chat_id=update.effective_chat.id, text="Actions:", reply_markup=menu)
+            await add_search_options_buttons(context, update)
 
 
 
