@@ -1,17 +1,17 @@
 import re
 import logging
-from tkinter import image_names
+import os
 
-from dotenv import dotenv_values
+from dotenv import load_dotenv
 from telegram import Update, constants, InlineKeyboardMarkup, InlineKeyboardButton, BotCommand
 from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, CallbackQueryHandler, MessageHandler
 
 from change_filter import create_user_filters, load_filters, change_filter_property
 from youtube_api import get_channels
-from helpers import stringify_filters, make_readable, prettify_number, trim_string
+from helpers import stringify_filters, make_readable
 from table_generators import get_table_image, get_pretty_table
 
-config = dotenv_values(".env")
+load_dotenv()
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -149,7 +149,7 @@ async def handle_messages(update, context):
 
 
 if __name__ == "__main__":
-    application = ApplicationBuilder().token(config["BOT_API_TOKEN"]).build()
+    application = ApplicationBuilder().token(os.environ.get("BOT_API_TOKEN")).build()
     
     start_handler = CommandHandler("start", start)
     application.add_handler(start_handler)
@@ -169,4 +169,17 @@ if __name__ == "__main__":
     message_handler = MessageHandler(filters=None, callback=handle_messages)
     application.add_handler(message_handler)
     
-    application.run_polling()
+    if os.environ.get("STAGE", "dev") == "dev":
+        application.run_polling()
+    else:
+        PORT = int(os.environ.get("PORT", "8443"))
+        TOKEN = os.environ.get("BOT_API_TOKEN")
+        APP_NAME = os.environ.get("APP_NAME", "")
+
+        application.start_webhook(
+            listen="0.0.0.0",
+            port=PORT,
+            url_path=TOKEN,
+            webhook_url=APP_NAME + TOKEN
+        )
+        application.idle()
