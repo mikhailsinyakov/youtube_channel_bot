@@ -1,11 +1,9 @@
 import requests
+import os
 
-from dotenv import dotenv_values
 import prettytable as pt
 
 from helpers import make_readable, prettify_number, trim_string
-
-config = dotenv_values(".env")
 
 def change_channel_keys(data):
     changes = {
@@ -59,8 +57,8 @@ def create_image_url(html_table):
     with open("table.css") as f:
         css = f.read()
 
-    user_id = config["HTMLCSS_TO_IMAGE_USER_ID"]
-    api_key = config["HTMLCSS_TO_IMAGE_API_KEY"]
+    user_id = os.environ.get("HTMLCSS_TO_IMAGE_USER_ID")
+    api_key = os.environ.get("HTMLCSS_TO_IMAGE_API_KEY")
     api_url = "https://hcti.io/v1/image"
 
     data = {

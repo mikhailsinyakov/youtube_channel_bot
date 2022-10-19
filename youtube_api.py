@@ -1,16 +1,15 @@
 from dotenv import dotenv_values
 import requests
 from urllib.parse import urlencode
+import os
 
 from change_filter import load_filters
-
-config = dotenv_values(".env")
 
 def get_channel_ids(query, page_token=None):
     search_url = "https://www.googleapis.com/youtube/v3/search?"
 
     query_params = {
-        "key": config["GOOGLE_API_KEY"],
+        "key": os.environ.get("GOOGLE_API_KEY"),
         "part": "snippet",
         "q": query,
         "type": "channel",
@@ -30,7 +29,7 @@ def get_channel_ids(query, page_token=None):
 def get_channel_info(channel_id, filters):
     channel_url = "https://www.googleapis.com/youtube/v3/channels?"
     query_params = {
-        "key": config["GOOGLE_API_KEY"],
+        "key": os.environ.get("GOOGLE_API_KEY"),
         "part": "snippet,statistics",
         "id": channel_id
     }
