@@ -151,35 +151,12 @@ async def handle_messages(update, context):
 if __name__ == "__main__":
     application = ApplicationBuilder().token(os.environ.get("BOT_API_TOKEN")).build()
     
-    start_handler = CommandHandler("start", start)
-    application.add_handler(start_handler)
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("show_filters", show_filters))
+    application.add_handler(CommandHandler("edit_filters", edit_filters))
+    application.add_handler(CommandHandler("search", search))
+
+    application.add_handler(CallbackQueryHandler(handle_callback_query))
+    application.add_handler(MessageHandler(filters=None, callback=handle_messages))
     
-    show_filters_handler = CommandHandler("show_filters", show_filters)
-    application.add_handler(show_filters_handler)
-
-    edit_filters_handler = CommandHandler("edit_filters", edit_filters)
-    application.add_handler(edit_filters_handler)
-
-    search_handler = CommandHandler("search", search)
-    application.add_handler(search_handler)
-
-    edit_filter_handler = CallbackQueryHandler(handle_callback_query)
-    application.add_handler(edit_filter_handler)
-
-    message_handler = MessageHandler(filters=None, callback=handle_messages)
-    application.add_handler(message_handler)
-    
-    if os.environ.get("STAGE", "dev") == "dev":
-        application.run_polling()
-    else:
-        PORT = int(os.environ.get("PORT", "8443"))
-        TOKEN = os.environ.get("BOT_API_TOKEN")
-        APP_NAME = os.environ.get("APP_NAME", "")
-
-        application.start_webhook(
-            listen="0.0.0.0",
-            port=PORT,
-            url_path=TOKEN,
-            webhook_url=APP_NAME + TOKEN
-        )
-        application.idle()
+    application.run_polling()
